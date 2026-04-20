@@ -1,7 +1,6 @@
-// === CORE SETTINGS ===
 function getGeminiUrl(key) {
-    // Reverting to v1beta for better compatibility with free-tier keys
-    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+    // Using the 'flash-latest' alias which is the most stable for v1beta keys
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`;
 }
 
 // === STATE MANAGEMENT ===
