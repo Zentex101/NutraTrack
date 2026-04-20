@@ -1,6 +1,5 @@
-function getGeminiUrl() {
-    const key = localStorage.getItem('nt_api_key');
-    if (!key) return null;
+// === CORE SETTINGS ===
+function getGeminiUrl(key) {
     return `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
 }
 
@@ -11,7 +10,9 @@ let state = {
     weights: JSON.parse(localStorage.getItem('mt_weights')) || [],
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
-    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || []
+    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
+    apiKey: localStorage.getItem('mt_api_key') || null,
+    recentMeals: JSON.parse(localStorage.getItem('mt_recent')) || []
 };
 
 let MACRO_GOALS = {
@@ -32,6 +33,7 @@ function saveState() {
     localStorage.setItem('mt_weights', JSON.stringify(state.weights));
     localStorage.setItem('mt_profile', JSON.stringify(state.profile));
     localStorage.setItem('mt_workouts', JSON.stringify(state.workouts));
+    localStorage.setItem('mt_api_key', state.apiKey || '');
     localStorage.setItem('mt_recent', JSON.stringify(state.recentMeals));
     
     if (state.profile) MACRO_GOALS = state.profile.macros;
@@ -322,30 +324,22 @@ captureBtn.addEventListener('click', async () => {
         promptText = "Analyze this image. If it is a Barcode, read the absolute numerical UPCA digits perfectly and return ONLY JSON like `{\"barcode\": \"1234567890\"}`. If it is a Nutrition Label WITHOUT a barcode, return exactly the parsed macros like `{\"name\": \"Scanned Item\", \"calories\": 100, \"protein\": 10, \"carbs\": 10, \"fat\": 10, \"confidence\": 100, \"breakdown\": []}`. STRICTLY ONLY JSON.";
     }
 
+    // API Key Check
+    if (!state.apiKey) {
+        alert("Please go to the Profile tab and enter a Google AI API Key to use this feature.");
+        document.querySelector('.nav-item[data-target="view-profile"]').click();
+        captureBtn.classList.remove('hidden');
+        loadingEl.classList.add('hidden');
+        return;
+    }
+
     try {
         const payload = {
-            contents: [
-                {
-                    parts: [
-                        { text: promptText },
-                        { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                    ]
-                }
-            ],
-            generationConfig: {
-                responseMimeType: "application/json"
-            }
+            contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }] }],
+            generationConfig: { responseMimeType: "application/json" }
         };
 
-        const apiUrl = getGeminiUrl();
-        if (!apiUrl) {
-            alert("API Key Required! Please go to the Profile tab and paste your Gemini API Key first.");
-            loadingEl.classList.add('hidden');
-            captureBtn.classList.remove('hidden');
-            return;
-        }
-
-        const res = await fetch(apiUrl, {
+        const res = await fetch(getGeminiUrl(state.apiKey), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -353,7 +347,7 @@ captureBtn.addEventListener('click', async () => {
 
         if (!res.ok) {
             const errData = await res.json();
-            throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing or image content."}`);
+            throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing."}`);
         }
 
         const data = await res.json();
@@ -459,21 +453,22 @@ if (aiTextBtn) {
             "breakdown" (array of objects with "item" and "calories" keys showing major ingredients found).
             STRICTLY ONLY JSON.`;
 
+        // API Key Check
+        if (!state.apiKey) {
+            alert("Please go to the Profile tab and enter a Google AI API Key to use this feature.");
+            document.querySelector('.nav-item[data-target="view-profile"]').click();
+            loadingEl.classList.add('hidden');
+            aiTextBtn.disabled = false;
+            return;
+        }
+
         try {
             const payload = {
                 contents: [{ parts: [{ text: promptText }] }],
                 generationConfig: { responseMimeType: "application/json" }
             };
 
-            const apiUrl = getGeminiUrl();
-            if (!apiUrl) {
-                alert("Please add your Gemini API Key in the Profile tab first.");
-                loadingEl.classList.add('hidden');
-                aiTextBtn.disabled = false;
-                return;
-            }
-
-            const res = await fetch(apiUrl, {
+            const res = await fetch(getGeminiUrl(state.apiKey), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -481,7 +476,7 @@ if (aiTextBtn) {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing."}`);
+                throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key."}`);
             }
 
             const data = await res.json();
@@ -899,32 +894,7 @@ function renderProfile() {
         <li class="list-item"><span class="list-item-title">Height / Weight</span> <span class="list-item-val">${p.height}" / ${p.weight} lbs</span></li>
         <li class="list-item"><span class="list-item-title">Goal Weight</span> <span class="list-item-val">${p.goalWeight} lbs</span></li>
     `;
-
-    // API Key Indicator
-    const savedKey = localStorage.getItem('nt_api_key');
-    const apiKeyInput = document.getElementById('api-key-input');
-    if (savedKey && apiKeyInput) {
-        apiKeyInput.placeholder = "•••••••••••••••• (Key Saved)";
-    }
 }
-
-// API Key Storage
-document.getElementById('save-api-key-btn').addEventListener('click', () => {
-    const input = document.getElementById('api-key-input');
-    const status = document.getElementById('api-key-status');
-    const key = input.value.trim();
-    
-    if (!key) return alert("Please paste a valid key.");
-    
-    localStorage.setItem('nt_api_key', key);
-    input.value = '';
-    status.innerText = "API Key Saved Successfully!";
-    status.style.display = 'block';
-    status.style.color = 'var(--accent-blue)';
-    renderProfile();
-    
-    setTimeout(() => { status.style.display = 'none'; }, 3000);
-});
 
 document.getElementById('ob-submit-btn').addEventListener('click', () => {
     const gender = document.getElementById('ob-gender').value;
@@ -1201,6 +1171,58 @@ function renderRecentMeals() {
             }
         };
         list.appendChild(item);
+    });
+}
+
+// === PROFILE & GOALS ===
+function renderProfile() {
+    if (!state.profile) return;
+    
+    // Update Goals form
+    document.getElementById('manual-cal-goal').value = state.profile.macros.calories || 0;
+    document.getElementById('manual-pro-goal').value = state.profile.macros.protein || 0;
+    document.getElementById('manual-carb-goal').value = state.profile.macros.carbs || 0;
+    document.getElementById('manual-fat-goal').value = state.profile.macros.fat || 0;
+    
+    // Update API Key Input
+    document.getElementById('api-key-input').value = state.apiKey || '';
+
+    const list = document.getElementById('prof-stats-list');
+    if (list) {
+        list.innerHTML = '';
+        const stats = [
+            { label: 'Weight', val: state.profile.weight, unit: 'lbs' },
+            { label: 'Height', val: state.profile.height, unit: 'in' },
+            { label: 'Sex', val: (state.profile.gender || 'N/A').toUpperCase() },
+            { label: 'BMR', val: Math.round(state.profile.bmr || 0), unit: 'kcal' },
+            { label: 'TDEE', val: Math.round(state.profile.tdee || 0), unit: 'kcal' }
+        ];
+
+        stats.forEach(s => {
+            const li = document.createElement('li');
+            li.style = "display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-secondary);";
+            li.innerHTML = `<span>${s.label}</span> <span style="color:white; font-weight:bold;">${s.val} ${s.unit || ''}</span>`;
+            list.appendChild(li);
+        });
+    }
+}
+
+// API Key Save
+const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+if (saveApiKeyBtn) {
+    saveApiKeyBtn.addEventListener('click', () => {
+        const key = document.getElementById('api-key-input').value.trim();
+        if (!key || !key.startsWith('AIza')) return alert("Please enter a valid Google API key (starts with AIza...)");
+        
+        state.apiKey = key;
+        saveState();
+        
+        const status = document.getElementById('api-key-status');
+        if (status) {
+            status.innerText = "Secret key saved securely on this device!";
+            status.style.color = "var(--accent-blue)";
+            setTimeout(() => { status.innerText = ''; }, 3000);
+        }
     });
 }
 
