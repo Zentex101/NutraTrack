@@ -1,6 +1,6 @@
-function getGeminiUrl(key) {
-    // Using the 'flash-latest' alias which is the most stable for v1beta keys
-    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`;
+function getGeminiUrl(key, model = 'gemini-2.0-flash-exp') {
+    // Upgraded to Gemini 2.0 Flash-Exp for better performance and availability
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 }
 
 // === STATE MANAGEMENT ===
@@ -12,6 +12,7 @@ let state = {
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
     workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
     apiKey: localStorage.getItem('mt_api_key') || null,
+    apiKeyModel: localStorage.getItem('mt_api_model') || 'gemini-2.0-flash-exp',
     recentMeals: JSON.parse(localStorage.getItem('mt_recent')) || []
 };
 
@@ -34,6 +35,7 @@ function saveState() {
     localStorage.setItem('mt_profile', JSON.stringify(state.profile));
     localStorage.setItem('mt_workouts', JSON.stringify(state.workouts));
     localStorage.setItem('mt_api_key', state.apiKey || '');
+    localStorage.setItem('mt_api_model', state.apiKeyModel || 'gemini-2.0-flash-exp');
     localStorage.setItem('mt_recent', JSON.stringify(state.recentMeals));
     
     if (state.profile) MACRO_GOALS = state.profile.macros;
@@ -235,16 +237,28 @@ const resultEl = document.getElementById('ai-result');
 let scannedMealTemp = null;
 
 async function startCamera() {
-    if (stream) {
-        videoEl.srcObject = stream;
+    // If stream exists and is still active, just re-attach and play
+    if (stream && stream.active) {
+        if (videoEl.srcObject !== stream) {
+            videoEl.srcObject = stream;
+        }
+        videoEl.play().catch(e => console.warn("Auto-play prevented", e));
         return;
     }
+    
     try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Request access (browser should remember this on HTTPS)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
+        });
         videoEl.srcObject = stream;
+        videoEl.play();
     } catch (err) {
         console.error("Error accessing camera:", err);
-        // Do not alert aggressively so that Manual Tab remains usable
         console.warn("Camera access denied or unavailable. Manual entry recommended.");
     }
 }
@@ -288,6 +302,17 @@ tabManBtn.addEventListener('click', () => {
 });
 
 function stopCamera() {
+    // Soft stop: We keep the tracks alive in the 'stream' variable 
+    // so we don't have to ask for permission again.
+    // We just detach the video element to stop the UI rendering.
+    if (videoEl) {
+        videoEl.pause();
+        videoEl.srcObject = null;
+    }
+}
+
+// Full Shutdown (on logout or page close if needed)
+function hardStopCamera() {
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
@@ -339,7 +364,7 @@ captureBtn.addEventListener('click', async () => {
             // removed responseMimeType to prevent 400 errors
         };
 
-        const res = await fetch(getGeminiUrl(state.apiKey), {
+        const res = await fetch(getGeminiUrl(state.apiKey, state.apiKeyModel), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -468,7 +493,7 @@ if (aiTextBtn) {
                 // removed responseMimeType to prevent 400 errors
             };
 
-            const res = await fetch(getGeminiUrl(state.apiKey), {
+            const res = await fetch(getGeminiUrl(state.apiKey, state.apiKeyModel), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1222,12 +1247,52 @@ if (saveApiKeyBtn) {
         
         state.apiKey = key;
         saveState();
+        renderProfile();
         
         const status = document.getElementById('api-key-status');
         if (status) {
-            status.innerText = "Secret key saved securely on this device!";
+            status.innerText = "Secret key saved! (Stored on device only)";
             status.style.color = "var(--accent-blue)";
-            setTimeout(() => { status.innerText = ''; }, 3000);
+        }
+    });
+}
+
+// AI Connection Tester (Fixes 404/400 errors)
+const testApiKeyBtn = document.getElementById('test-api-key-btn');
+if (testApiKeyBtn) {
+    testApiKeyBtn.addEventListener('click', async () => {
+        const key = state.apiKey;
+        if (!key) return alert("Please save an API key first.");
+        
+        const status = document.getElementById('api-key-status');
+        status.innerText = "⏳ Scanning Google Models...";
+        status.style.color = "var(--text-secondary)";
+        
+        try {
+            // Step 1: List all models available to this key
+            const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+            const res = await fetch(listUrl);
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error?.message || "Invalid Key");
+
+            // Step 2: Look for 'flash' or 'pro' models
+            const models = data.models || [];
+            const flashModel = models.find(m => m.name.includes('flash') && m.supportedGenerationMethods.includes('generateContent'));
+            
+            if (flashModel) {
+                const modelId = flashModel.name.split('/')[1];
+                state.apiKeyModel = modelId;
+                saveState();
+                status.innerText = `✅ Found compatible engine: ${modelId}`;
+                status.style.color = "var(--accent-blue)";
+                renderProfile();
+            } else {
+                throw new Error("No compatible AI models found for this key.");
+            }
+        } catch (err) {
+            status.innerText = `❌ Connection Failed: ${err.message}`;
+            status.style.color = "var(--color-protein)";
         }
     });
 }
