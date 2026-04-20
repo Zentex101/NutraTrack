@@ -1215,6 +1215,16 @@ function renderRecentMeals() {
 function renderProfile() {
     if (!state.profile) return;
     
+    // Update Current Goals Display
+    const profCal = document.getElementById('prof-cal');
+    const profPro = document.getElementById('prof-pro');
+    const profCar = document.getElementById('prof-car');
+    const profFat = document.getElementById('prof-fat');
+    if (profCal) profCal.innerText = MACRO_GOALS.calories || 0;
+    if (profPro) profPro.innerText = MACRO_GOALS.protein || 0;
+    if (profCar) profCar.innerText = MACRO_GOALS.carbs || 0;
+    if (profFat) profFat.innerText = MACRO_GOALS.fat || 0;
+
     // Update Goals form
     document.getElementById('manual-cal-goal').value = state.profile.macros.calories || 0;
     document.getElementById('manual-pro-goal').value = state.profile.macros.protein || 0;
