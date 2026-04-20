@@ -342,7 +342,7 @@ captureBtn.addEventListener('click', async () => {
         "name" (string), 
         "calories" (number), "protein" (number), "carbs" (number), "fat" (number),
         "confidence" (number, 0-100),
-        "breakdown" (array of objects with "item" and "calories" keys showing major ingredients found).
+        "breakdown" (array of objects with "item", "calories", "protein", "carbs", and "fat" keys showing major ingredients found).
         STRICTLY ONLY JSON.`;
     
     if (currentScannerMode === 'label') {
@@ -416,8 +416,18 @@ captureBtn.addEventListener('click', async () => {
         if (scannedMealTemp.breakdown && scannedMealTemp.breakdown.length > 0) {
             scannedMealTemp.breakdown.forEach(item => {
                 const li = document.createElement('li');
-                li.style = "display:flex; justify-content:space-between; margin-bottom:4px; color:var(--text-secondary);";
-                li.innerHTML = `<span>• ${item.item}</span> <span style="color:white;">${item.calories} kcal</span>`;
+                li.style = "margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05);";
+                li.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span style="color:white; font-size:14px; font-weight:bold;">${item.item}</span>
+                        <span style="color:var(--accent-blue); font-weight:bold;">${item.calories} kcal</span>
+                    </div>
+                    <div style="display:flex; gap:10px; font-size:11px; color:var(--text-secondary);">
+                        <span>P: <b style="color:var(--color-protein);">${item.protein || 0}g</b></span>
+                        <span>C: <b style="color:var(--color-carbs);">${item.carbs || 0}g</b></span>
+                        <span>F: <b style="color:var(--color-fat);">${item.fat || 0}g</b></span>
+                    </div>
+                `;
                 breakdownList.appendChild(li);
             });
             document.getElementById('ai-breakdown-container').classList.remove('hidden');
@@ -475,7 +485,7 @@ if (aiTextBtn) {
         const promptText = `Analyze this food description: "${desc}". Return ONLY a valid JSON object with: 
             "name" (string), "calories" (number), "protein" (number), "carbs" (number), "fat" (number),
             "confidence" (number, 0-100),
-            "breakdown" (array of objects with "item" and "calories" keys showing major ingredients found).
+            "breakdown" (array of objects with "item", "calories", "protein", "carbs" and "fat" keys showing major ingredients found).
             STRICTLY ONLY JSON.`;
 
         // API Key Check
@@ -533,8 +543,18 @@ if (aiTextBtn) {
             breakdownList.innerHTML = '';
             mealData.breakdown.forEach(item => {
                 const li = document.createElement('li');
-                li.style = "display:flex; justify-content:space-between; margin-bottom:4px; color:var(--text-secondary);";
-                li.innerHTML = `<span>• ${item.item}</span> <span style="color:white;">${item.calories} kcal</span>`;
+                li.style = "margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05);";
+                li.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span style="color:white; font-size:14px; font-weight:bold;">${item.item}</span>
+                        <span style="color:var(--accent-blue); font-weight:bold;">${item.calories} kcal</span>
+                    </div>
+                    <div style="display:flex; gap:10px; font-size:11px; color:var(--text-secondary);">
+                        <span>P: <b style="color:var(--color-protein);">${item.protein || 0}g</b></span>
+                        <span>C: <b style="color:var(--color-carbs);">${item.carbs || 0}g</b></span>
+                        <span>F: <b style="color:var(--color-fat);">${item.fat || 0}g</b></span>
+                    </div>
+                `;
                 breakdownList.appendChild(li);
             });
             document.getElementById('ai-breakdown-container').classList.remove('hidden');

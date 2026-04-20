@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nutratrack-ai-recovery-v1';
+const CACHE_NAME = 'nutratrack-detailed-breakdown-v1';
 const ASSETS = [
   '/',
   '/index.html',
