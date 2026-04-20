@@ -9,7 +9,6 @@ let state = {
     recipes: JSON.parse(localStorage.getItem('mt_recipes')) || [],
     weights: JSON.parse(localStorage.getItem('mt_weights')) || [],
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
-    profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
     workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
     apiKey: localStorage.getItem('mt_api_key') || null,
     apiKeyModel: localStorage.getItem('mt_api_model') || 'gemini-2.0-flash-exp',
@@ -469,14 +468,20 @@ if (takePhotoBtn) {
 // Photo Picker Listeners
 const mediaInput = document.getElementById('media-input');
 if (mediaInput) {
-    document.getElementById('native-snap-btn').addEventListener('click', () => {
-        mediaInput.setAttribute('capture', 'environment');
-        mediaInput.click();
-    });
-    document.getElementById('gallery-btn').addEventListener('click', () => {
-        mediaInput.removeAttribute('capture');
-        mediaInput.click();
-    });
+    const nativeSnapBtn = document.getElementById('native-snap-btn');
+    if (nativeSnapBtn) {
+        nativeSnapBtn.addEventListener('click', () => {
+            mediaInput.setAttribute('capture', 'environment');
+            mediaInput.click();
+        });
+    }
+    const galleryBtn = document.getElementById('gallery-btn');
+    if (galleryBtn) {
+        galleryBtn.addEventListener('click', () => {
+            mediaInput.removeAttribute('capture');
+            mediaInput.click();
+        });
+    }
 
     mediaInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
