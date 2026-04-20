@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nutratrack-v4';
+const CACHE_NAME = 'nutratrack-v5';
 const ASSETS = [
   '/',
   '/index.html',

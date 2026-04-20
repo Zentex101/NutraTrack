@@ -68,12 +68,11 @@ navItems.forEach(item => {
         // Special handlers
         if (targetId === 'view-scanner') {
             startCamera();
-        } else {
-            stopCamera();
         }
 
-        if (targetId === 'view-weight') {
+        if (targetId === 'view-progress') {
             renderWeightChart();
+            renderWorkouts();
         }
     });
 });
@@ -229,6 +228,10 @@ const resultEl = document.getElementById('ai-result');
 let scannedMealTemp = null;
 
 async function startCamera() {
+    if (stream) {
+        videoEl.srcObject = stream;
+        return;
+    }
     try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         videoEl.srcObject = stream;
@@ -923,14 +926,38 @@ function renderWorkouts() {
     reversed.forEach(wo => {
         const totalSets = wo.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
         
-        html += `
-            <div class="list-item">
-                <div style="flex:1;">
-                    <div class="list-item-title">${wo.name}</div>
-                    <div class="list-item-sub">${wo.date} • ${wo.exercises.length} Exercises • ${totalSets} Sets</div>
+        let exercisesHTML = '';
+        wo.exercises.forEach(ex => {
+            let setDetails = [];
+            ex.sets.forEach(s => setDetails.push(`${s.weight}lbs x ${s.reps}`));
+            exercisesHTML += `
+                <div style="margin-top:12px; border-left:2px solid var(--accent-blue); padding-left:12px;">
+                    <div style="color:white; font-size:14px; font-weight:bold;">${ex.name} (${ex.sets.length} sets)</div>
+                    <div style="color:var(--text-secondary); font-size:12px; margin-top:4px;">${setDetails.join(' • ')}</div>
                 </div>
-                <div class="list-item-val" style="display:flex; gap:8px;">
-                     <button class="btn btn-secondary" onclick="deleteWorkout('${wo.timestamp}')" style="padding: 6px; border:1px solid rgba(255,51,102,0.2); color:#ff3366;"><i class="fa-solid fa-trash"></i></button>
+            `;
+        });
+
+        const accId = `wo-${wo.timestamp}`;
+
+        html += `
+            <div class="card form-card" style="margin-bottom:12px;">
+                <div id="header-${accId}" class="accordion-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:8px; cursor:pointer;" onclick="toggleAccordion('${accId}')">
+                    <div style="flex:1;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-chevron-down" style="color:var(--text-secondary); font-size:12px;"></i>
+                            <div class="list-item-title">${wo.name}</div>
+                        </div>
+                        <div class="list-item-sub" style="margin-top:4px; padding-left:20px;">${wo.date} • ${wo.exercises.length} Exercises</div>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); deleteWorkout('${wo.timestamp}')" style="padding: 6px; border:1px solid rgba(255,51,102,0.2); color:#ff3366;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <div id="${accId}" class="accordion-content">
+                    <div style="padding-top:8px; border-top:1px solid rgba(255,255,255,0.05); margin-top:8px; padding-bottom:8px;">
+                        ${exercisesHTML}
+                    </div>
                 </div>
             </div>
         `;
