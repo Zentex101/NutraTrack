@@ -826,7 +826,7 @@ let activeWorkout = null;
 document.getElementById('new-workout-btn').addEventListener('click', () => {
     activeWorkout = {
         name: "",
-        date: new Date().toLocaleDateString('en-US', options),
+        date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
         timestamp: new Date().getTime(),
         exercises: []
     };
