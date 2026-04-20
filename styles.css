@@ -564,34 +564,6 @@ input[type="number"], input[type="text"] {
     transform: rotate(-90deg);
 }
 /* === INSPIRATION UPGRADES (MFP / CAL AI) === */
-.streak-badge {
-    background: rgba(255, 77, 0, 0.1);
-    border: 1px solid rgba(255, 77, 0, 0.2);
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    animation: flicker 2s infinite ease-in-out;
-}
-
-.streak-badge i {
-    text-shadow: 0 0 10px rgba(255, 77, 0, 1);
-}
-
-@keyframes flicker {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(0.98); }
-}
-
-.water-tracker {
-    transition: var(--transition);
-}
-.water-tracker:active {
-    transform: scale(0.95);
-}
-
 #recent-list::-webkit-scrollbar {
     height: 4px;
 }

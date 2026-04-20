@@ -8,11 +8,8 @@ let state = {
     recipes: JSON.parse(localStorage.getItem('mt_recipes')) || [],
     weights: JSON.parse(localStorage.getItem('mt_weights')) || [],
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
-    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
-    recentMeals: JSON.parse(localStorage.getItem('mt_recent')) || [],
-    waterIntake: JSON.parse(localStorage.getItem('mt_water')) || 0,
-    streak: JSON.parse(localStorage.getItem('mt_streak')) || 0,
-    lastStreakDate: localStorage.getItem('mt_streak_date') || null
+    profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
+    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || []
 };
 
 let MACRO_GOALS = {
@@ -34,9 +31,6 @@ function saveState() {
     localStorage.setItem('mt_profile', JSON.stringify(state.profile));
     localStorage.setItem('mt_workouts', JSON.stringify(state.workouts));
     localStorage.setItem('mt_recent', JSON.stringify(state.recentMeals));
-    localStorage.setItem('mt_water', JSON.stringify(state.waterIntake));
-    localStorage.setItem('mt_streak', JSON.stringify(state.streak));
-    localStorage.setItem('mt_streak_date', state.lastStreakDate);
     
     if (state.profile) MACRO_GOALS = state.profile.macros;
     
@@ -223,17 +217,6 @@ function renderDashboard() {
     document.getElementById('pro-bar').style.width = `${proPerc}%`;
     document.getElementById('carb-bar').style.width = `${carbPerc}%`;
     document.getElementById('fat-bar').style.width = `${fatPerc}%`;
-
-    // Update Streak & Water (MFP style)
-    document.getElementById('streak-val').innerText = state.streak;
-    document.getElementById('water-val').innerText = state.waterIntake;
-    
-    // Check for streak increment (if goal hit today)
-    if (totals.protein >= MACRO_GOALS.protein && state.lastStreakDate !== new Date().toLocaleDateString()) {
-        state.streak++;
-        state.lastStreakDate = new Date().toLocaleDateString();
-        saveState();
-    }
 }
 
 
@@ -358,6 +341,11 @@ captureBtn.addEventListener('click', async () => {
             body: JSON.stringify(payload)
         });
 
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing or image content."}`);
+        }
+
         const data = await res.json();
         
         let textResult = data.candidates[0].content.parts[0].text;
@@ -472,6 +460,11 @@ if (aiTextBtn) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing."}`);
+            }
 
             const data = await res.json();
             let textResult = data.candidates[0].content.parts[0].text;
@@ -1177,18 +1170,6 @@ function initApp() {
         document.getElementById('manual-pro-goal').value = state.profile.macros.protein;
         document.getElementById('manual-carb-goal').value = state.profile.macros.carbs;
         document.getElementById('manual-fat-goal').value = state.profile.macros.fat;
-    }
-
-    // Streak Check
-    if (state.lastStreakDate) {
-        const last = new Date(state.lastStreakDate);
-        const today = new Date();
-        const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
-        if (diffDays > 1) {
-            state.streak = 0; // Streak broken
-            state.lastStreakDate = null;
-            saveState();
-        }
     }
 
     renderDashboard();
