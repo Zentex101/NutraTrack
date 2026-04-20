@@ -319,25 +319,12 @@ function hardStopCamera() {
     }
 }
 
-captureBtn.addEventListener('click', async () => {
-    if (!stream) return;
-    
-    // Capture to canvas
-    const ctx = canvasEl.getContext('2d');
-    canvasEl.width = videoEl.videoWidth;
-    canvasEl.height = videoEl.videoHeight;
-    ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    
-    // Get base64 (remove the data:image/jpeg;base64, prefix for gemini)
-    const base64Full = canvasEl.toDataURL('image/jpeg', 0.8);
-    const base64Data = base64Full.split(',')[1];
-
+async function runAIVisionScan(base64Data) {
     // UI Updates
     captureBtn.classList.add('hidden');
     resultEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
 
-    // Prompt logic varies cleanly based on selected tab mode
     let promptText = `Analyze this image and estimate the food. Return ONLY a valid JSON object with:
         "name" (string), 
         "calories" (number), "protein" (number), "carbs" (number), "fat" (number),
@@ -349,9 +336,8 @@ captureBtn.addEventListener('click', async () => {
         promptText = "Analyze this image. If it is a Barcode, read the absolute numerical UPCA digits perfectly and return ONLY JSON like `{\"barcode\": \"1234567890\"}`. If it is a Nutrition Label WITHOUT a barcode, return exactly the parsed macros like `{\"name\": \"Scanned Item\", \"calories\": 100, \"protein\": 10, \"carbs\": 10, \"fat\": 10, \"confidence\": 100, \"breakdown\": []}`. STRICTLY ONLY JSON.";
     }
 
-    // API Key Check
     if (!state.apiKey) {
-        alert("Please go to the Profile tab and enter a Google AI API Key to use this feature.");
+        alert("Please go to the Profile tab and enter a Google AI API Key.");
         document.querySelector('.nav-item[data-target="view-profile"]').click();
         captureBtn.classList.remove('hidden');
         loadingEl.classList.add('hidden');
@@ -359,10 +345,7 @@ captureBtn.addEventListener('click', async () => {
     }
 
     try {
-        const payload = {
-            contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }] }]
-            // removed responseMimeType to prevent 400 errors
-        };
+        const payload = { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }] }] };
 
         const res = await fetch(getGeminiUrl(state.apiKey, state.apiKeyModel), {
             method: 'POST',
@@ -372,22 +355,18 @@ captureBtn.addEventListener('click', async () => {
 
         if (!res.ok) {
             const errData = await res.json();
-            throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key/billing."}`);
+            throw new Error(`Google API Error ${res.status}: ${errData.error?.message || "Check your API key."}`);
         }
 
         const data = await res.json();
-        
         let textResult = data.candidates[0].content.parts[0].text;
         const match = textResult.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("Could not find JSON in AI response.");
         
         let mealData = JSON.parse(match[0]);
-
-        // Branching Barcode Logic
         if (mealData.barcode) {
             loadingEl.querySelector('p').innerText = "Found barcode... Fetching OpenFoodFacts DB...";
-            const dbData = await lookupBarcodeOpenFoodFacts(mealData.barcode);
-            mealData = dbData;
+            mealData = await lookupBarcodeOpenFoodFacts(mealData.barcode);
         }
 
         scannedMealTemp = {
@@ -402,15 +381,14 @@ captureBtn.addEventListener('click', async () => {
             timestamp: getDisplayDate().getTime()
         };
 
-        // Populate Result UI
+        // Populate UI
         document.getElementById('ai-meal-name').innerText = scannedMealTemp.name;
         document.getElementById('res-cal').innerText = scannedMealTemp.calories;
         document.getElementById('res-pro').innerText = scannedMealTemp.protein;
         document.getElementById('res-car').innerText = scannedMealTemp.carbs;
         document.getElementById('res-fat').innerText = scannedMealTemp.fat;
-        
-        // Confidence & Breakdown (Cal AI style)
         document.getElementById('ai-confidence').innerText = `${scannedMealTemp.confidence}% Confidence`;
+        
         const breakdownList = document.getElementById('ai-breakdown-list');
         breakdownList.innerHTML = '';
         if (scannedMealTemp.breakdown && scannedMealTemp.breakdown.length > 0) {
@@ -431,20 +409,50 @@ captureBtn.addEventListener('click', async () => {
                 breakdownList.appendChild(li);
             });
             document.getElementById('ai-breakdown-container').classList.remove('hidden');
-        } else {
-            document.getElementById('ai-breakdown-container').classList.add('hidden');
         }
 
         loadingEl.classList.add('hidden');
         resultEl.classList.remove('hidden');
-
     } catch (err) {
-        console.error("AI Error:", err);
-        alert(`Failed to analyze meal. Reason: ${err.message || "Unknown error"}. Please check your API key and connection.`);
-        loadingEl.classList.add('hidden');
+        alert(`Scan failed: ${err.message}`);
         captureBtn.classList.remove('hidden');
+        loadingEl.classList.add('hidden');
     }
+}
+
+captureBtn.addEventListener('click', async () => {
+    if (!stream) return;
+    const ctx = canvasEl.getContext('2d');
+    canvasEl.width = videoEl.videoWidth;
+    canvasEl.height = videoEl.videoHeight;
+    ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+    const base64Full = canvasEl.toDataURL('image/jpeg', 0.8);
+    const base64Data = base64Full.split(',')[1];
+    runAIVisionScan(base64Data);
 });
+
+// Photo Picker Listeners
+const mediaInput = document.getElementById('media-input');
+if (mediaInput) {
+    document.getElementById('native-snap-btn').addEventListener('click', () => {
+        mediaInput.setAttribute('capture', 'environment');
+        mediaInput.click();
+    });
+    document.getElementById('gallery-btn').addEventListener('click', () => {
+        mediaInput.removeAttribute('capture');
+        mediaInput.click();
+    });
+
+    mediaInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            runAIVisionScan(event.target.result.split(',')[1]);
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 document.getElementById('discard-meal-btn').addEventListener('click', () => {
     scannedMealTemp = null;

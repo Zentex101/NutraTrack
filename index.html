@@ -131,7 +131,13 @@
                     </div>
                     
                     <div class="camera-controls" style="margin-top:16px;">
-                        <button id="capture-btn" class="btn btn-primary btn-large glow full-width"><i class="fa-solid fa-camera"></i> Scan Meal</button>
+                        <button id="capture-btn" class="btn btn-primary btn-large glow full-width" style="margin-bottom:12px;"><i class="fa-solid fa-camera"></i> Scan Meal (Live)</button>
+                        
+                        <div style="display:flex; gap:12px;">
+                            <button id="native-snap-btn" class="btn btn-secondary" style="flex:1;"><i class="fa-solid fa-camera-retro"></i> Take Photo</button>
+                            <button id="gallery-btn" class="btn btn-secondary" style="flex:1;"><i class="fa-solid fa-image"></i> Gallery</button>
+                        </div>
+                        <input type="file" id="media-input" accept="image/*" style="display:none;">
                     </div>
 
                     <div style="margin-top:24px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px;">
