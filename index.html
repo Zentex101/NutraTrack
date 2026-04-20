@@ -369,6 +369,18 @@
                     </div>
                     <button id="manual-save-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-check"></i> Save Custom Goals</button>
                 </div>
+
+                <!-- API SETTINGS -->
+                <div class="card form-card" style="margin-top: 24px; border: 1px solid var(--accent-blue-dim);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="color:var(--accent-blue);"><i class="fa-solid fa-key"></i> AI Scanner Setup</h3>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size:11px; color:var(--text-secondary); text-decoration:underline;">Get Free Key</a>
+                    </div>
+                    <p class="subtitle" style="margin-bottom: 16px;">Google disabled the public key. Paste your own Gemini API Key below to enable the scanner safely.</p>
+                    <input type="password" id="api-key-input" placeholder="Paste Gemini API Key here..." class="input-full" style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); color:white;">
+                    <button id="save-api-key-btn" class="btn btn-secondary full-width" style="margin-top:12px;">Save API Key Securely</button>
+                    <p id="api-key-status" style="font-size:11px; text-align:center; margin-top:8px; display:none;"></p>
+                </div>
             </section>
         </main>
 

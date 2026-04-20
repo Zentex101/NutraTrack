@@ -1,6 +1,8 @@
-const API_KEY = "AIzaSyAX7-naIlmsTVsfEW3lJ9xAvSuo89hNGK4";
-// Using the latest flash model to prevent deprecation 404s
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
+function getGeminiUrl() {
+    const key = localStorage.getItem('nt_api_key');
+    if (!key) return null;
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
+}
 
 // === STATE MANAGEMENT ===
 let state = {
@@ -335,7 +337,15 @@ captureBtn.addEventListener('click', async () => {
             }
         };
 
-        const res = await fetch(GEMINI_API_URL, {
+        const apiUrl = getGeminiUrl();
+        if (!apiUrl) {
+            alert("API Key Required! Please go to the Profile tab and paste your Gemini API Key first.");
+            loadingEl.classList.add('hidden');
+            captureBtn.classList.remove('hidden');
+            return;
+        }
+
+        const res = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -455,7 +465,15 @@ if (aiTextBtn) {
                 generationConfig: { responseMimeType: "application/json" }
             };
 
-            const res = await fetch(GEMINI_API_URL, {
+            const apiUrl = getGeminiUrl();
+            if (!apiUrl) {
+                alert("Please add your Gemini API Key in the Profile tab first.");
+                loadingEl.classList.add('hidden');
+                aiTextBtn.disabled = false;
+                return;
+            }
+
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -881,7 +899,32 @@ function renderProfile() {
         <li class="list-item"><span class="list-item-title">Height / Weight</span> <span class="list-item-val">${p.height}" / ${p.weight} lbs</span></li>
         <li class="list-item"><span class="list-item-title">Goal Weight</span> <span class="list-item-val">${p.goalWeight} lbs</span></li>
     `;
+
+    // API Key Indicator
+    const savedKey = localStorage.getItem('nt_api_key');
+    const apiKeyInput = document.getElementById('api-key-input');
+    if (savedKey && apiKeyInput) {
+        apiKeyInput.placeholder = "•••••••••••••••• (Key Saved)";
+    }
 }
+
+// API Key Storage
+document.getElementById('save-api-key-btn').addEventListener('click', () => {
+    const input = document.getElementById('api-key-input');
+    const status = document.getElementById('api-key-status');
+    const key = input.value.trim();
+    
+    if (!key) return alert("Please paste a valid key.");
+    
+    localStorage.setItem('nt_api_key', key);
+    input.value = '';
+    status.innerText = "API Key Saved Successfully!";
+    status.style.display = 'block';
+    status.style.color = 'var(--accent-blue)';
+    renderProfile();
+    
+    setTimeout(() => { status.style.display = 'none'; }, 3000);
+});
 
 document.getElementById('ob-submit-btn').addEventListener('click', () => {
     const gender = document.getElementById('ob-gender').value;
