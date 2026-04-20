@@ -412,11 +412,18 @@ async function runAIVisionScan(base64Data) {
             document.getElementById('ai-breakdown-container').classList.remove('hidden');
         }
 
+        // SHOW RESULTS - This was missing!
+        resultEl.classList.remove('hidden');
+        if (typeof renderRecentMeals === 'function') renderRecentMeals();
+
+    } catch (err) {
+        console.error("Scan Error:", err);
+        alert(`Scanner Error: ${err.message}`);
+        captureBtn.classList.remove('hidden');
+        document.getElementById('take-photo-btn').classList.remove('hidden');
     } finally {
         loadingEl.classList.add('hidden');
         document.getElementById('snap-preview').classList.add('hidden');
-        document.getElementById('capture-btn').classList.remove('hidden');
-        document.getElementById('take-photo-btn').classList.remove('hidden');
     }
 }
 
@@ -427,13 +434,13 @@ captureBtn.addEventListener('click', async () => {
     canvasEl.width = videoEl.videoWidth;
     canvasEl.height = videoEl.videoHeight;
     ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    runAIVisionScan(canvasEl.toDataURL('image/jpeg', 0.8).split(',')[1]);
+    await runAIVisionScan(canvasEl.toDataURL('image/jpeg', 0.8).split(',')[1]);
 });
 
 // TAKE PHOTO: Freeze frame + Flash capture
 const takePhotoBtn = document.getElementById('take-photo-btn');
 if (takePhotoBtn) {
-    takePhotoBtn.addEventListener('click', () => {
+    takePhotoBtn.addEventListener('click', async () => {
         if (!stream) return;
 
         // 1. Capture the image
@@ -455,7 +462,7 @@ if (takePhotoBtn) {
         flash.classList.add('flash-active');
 
         // 4. Run Scan
-        runAIVisionScan(dataUrl.split(',')[1]);
+        await runAIVisionScan(dataUrl.split(',')[1]);
     });
 }
 
@@ -471,12 +478,12 @@ if (mediaInput) {
         mediaInput.click();
     });
 
-    mediaInput.addEventListener('change', (e) => {
+    mediaInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (event) => {
-            runAIVisionScan(event.target.result.split(',')[1]);
+        reader.onload = async (event) => {
+            await runAIVisionScan(event.target.result.split(',')[1]);
         };
         reader.readAsDataURL(file);
     });
@@ -486,10 +493,15 @@ document.getElementById('discard-meal-btn').addEventListener('click', () => {
     scannedMealTemp = null;
     resultEl.classList.add('hidden');
     captureBtn.classList.remove('hidden');
+    document.getElementById('take-photo-btn').classList.remove('hidden');
 });
 
 document.getElementById('save-meal-btn').addEventListener('click', () => {
     if (!scannedMealTemp) return;
+    
+    // Set meal type from dropdown
+    scannedMealTemp.type = document.getElementById('res-meal-type').value;
+    
     state.meals.push(scannedMealTemp);
     
     // Manage Recent Meals (MFP style)
@@ -503,8 +515,12 @@ document.getElementById('save-meal-btn').addEventListener('click', () => {
 
     saveState();
     scannedMealTemp = null;
+    
+    // Reset UI & redirect to dashboard
     resultEl.classList.add('hidden');
     captureBtn.classList.remove('hidden');
+    document.getElementById('take-photo-btn').classList.remove('hidden');
+    document.querySelector('.nav-item[data-target="view-dashboard"]').click();
 });
 
 // Natural Language AI Logging (Cal AI style)
@@ -656,25 +672,7 @@ if (manBarcodeBtn) {
 }
 
 
-document.getElementById('discard-meal-btn').addEventListener('click', () => {
-    scannedMealTemp = null;
-    resultEl.classList.add('hidden');
-    captureBtn.classList.remove('hidden');
-});
-
-document.getElementById('save-meal-btn').addEventListener('click', () => {
-    if (scannedMealTemp) {
-        scannedMealTemp.type = document.getElementById('res-meal-type').value;
-        state.meals.push(scannedMealTemp);
-        saveState();
-        scannedMealTemp = null;
-        
-        // Reset UI & redirect to dashboard
-        resultEl.classList.add('hidden');
-        captureBtn.classList.remove('hidden');
-        document.querySelector('.nav-item[data-target="view-dashboard"]').click();
-    }
-});
+// Duplicate listeners removed and merged into lines 485-508 for cleaner logic.
 
 // Manual Log Save
 document.getElementById('man-save-btn').addEventListener('click', () => {
