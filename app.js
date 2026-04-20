@@ -8,7 +8,11 @@ let state = {
     recipes: JSON.parse(localStorage.getItem('mt_recipes')) || [],
     weights: JSON.parse(localStorage.getItem('mt_weights')) || [],
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
-    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || []
+    workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
+    recentMeals: JSON.parse(localStorage.getItem('mt_recent')) || [],
+    waterIntake: JSON.parse(localStorage.getItem('mt_water')) || 0,
+    streak: JSON.parse(localStorage.getItem('mt_streak')) || 0,
+    lastStreakDate: localStorage.getItem('mt_streak_date') || null
 };
 
 let MACRO_GOALS = {
@@ -29,6 +33,10 @@ function saveState() {
     localStorage.setItem('mt_weights', JSON.stringify(state.weights));
     localStorage.setItem('mt_profile', JSON.stringify(state.profile));
     localStorage.setItem('mt_workouts', JSON.stringify(state.workouts));
+    localStorage.setItem('mt_recent', JSON.stringify(state.recentMeals));
+    localStorage.setItem('mt_water', JSON.stringify(state.waterIntake));
+    localStorage.setItem('mt_streak', JSON.stringify(state.streak));
+    localStorage.setItem('mt_streak_date', state.lastStreakDate);
     
     if (state.profile) MACRO_GOALS = state.profile.macros;
     
@@ -37,6 +45,7 @@ function saveState() {
     renderRecipes();
     renderProfile();
     renderWorkouts();
+    renderRecentMeals();
 }
 
 // === CONSTANTS & DOM ELEMENTS ===
@@ -214,6 +223,17 @@ function renderDashboard() {
     document.getElementById('pro-bar').style.width = `${proPerc}%`;
     document.getElementById('carb-bar').style.width = `${carbPerc}%`;
     document.getElementById('fat-bar').style.width = `${fatPerc}%`;
+
+    // Update Streak & Water (MFP style)
+    document.getElementById('streak-val').innerText = state.streak;
+    document.getElementById('water-val').innerText = state.waterIntake;
+    
+    // Check for streak increment (if goal hit today)
+    if (totals.protein >= MACRO_GOALS.protein && state.lastStreakDate !== new Date().toLocaleDateString()) {
+        state.streak++;
+        state.lastStreakDate = new Date().toLocaleDateString();
+        saveState();
+    }
 }
 
 
@@ -305,11 +325,16 @@ captureBtn.addEventListener('click', async () => {
     resultEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
 
-        // Prompt logic varies cleanly based on selected tab mode
-    let promptText = "Analyze this image and estimate the food. Give a rough estimate. Do not complain about accuracy. Return ONLY a valid JSON object with EXACTLY these keys (no extra keys): 'name' (string), 'calories' (number), 'protein' (number), 'carbs' (number), 'fat' (number).";
+    // Prompt logic varies cleanly based on selected tab mode
+    let promptText = `Analyze this image and estimate the food. Return ONLY a valid JSON object with:
+        "name" (string), 
+        "calories" (number), "protein" (number), "carbs" (number), "fat" (number),
+        "confidence" (number, 0-100),
+        "breakdown" (array of objects with "item" and "calories" keys showing major ingredients found).
+        STRICTLY ONLY JSON.`;
     
     if (currentScannerMode === 'label') {
-        promptText = "Analyze this image. If it is a Barcode, read the absolute numerical UPCA digits perfectly and return ONLY JSON like `{\"barcode\": \"1234567890\"}`. If it is a Nutrition Label WITHOUT a barcode, return exactly the parsed macros like `{\"name\": \"Scanned Item\", \"calories\": 100, \"protein\": 10, \"carbs\": 10, \"fat\": 10}`. STRICTLY ONLY JSON.";
+        promptText = "Analyze this image. If it is a Barcode, read the absolute numerical UPCA digits perfectly and return ONLY JSON like `{\"barcode\": \"1234567890\"}`. If it is a Nutrition Label WITHOUT a barcode, return exactly the parsed macros like `{\"name\": \"Scanned Item\", \"calories\": 100, \"protein\": 10, \"carbs\": 10, \"fat\": 10, \"confidence\": 100, \"breakdown\": []}`. STRICTLY ONLY JSON.";
     }
 
     try {
@@ -355,15 +380,33 @@ captureBtn.addEventListener('click', async () => {
             protein: mealData.protein || 0,
             carbs: mealData.carbs || 0,
             fat: mealData.fat || 0,
+            confidence: mealData.confidence || 0,
+            breakdown: mealData.breakdown || [],
             timestamp: getDisplayDate().getTime()
         };
 
-        // Populate Result
+        // Populate Result UI
         document.getElementById('ai-meal-name').innerText = scannedMealTemp.name;
         document.getElementById('res-cal').innerText = scannedMealTemp.calories;
         document.getElementById('res-pro').innerText = scannedMealTemp.protein;
         document.getElementById('res-car').innerText = scannedMealTemp.carbs;
         document.getElementById('res-fat').innerText = scannedMealTemp.fat;
+        
+        // Confidence & Breakdown (Cal AI style)
+        document.getElementById('ai-confidence').innerText = `${scannedMealTemp.confidence}% Confidence`;
+        const breakdownList = document.getElementById('ai-breakdown-list');
+        breakdownList.innerHTML = '';
+        if (scannedMealTemp.breakdown && scannedMealTemp.breakdown.length > 0) {
+            scannedMealTemp.breakdown.forEach(item => {
+                const li = document.createElement('li');
+                li.style = "display:flex; justify-content:space-between; margin-bottom:4px; color:var(--text-secondary);";
+                li.innerHTML = `<span>• ${item.item}</span> <span style="color:white;">${item.calories} kcal</span>`;
+                breakdownList.appendChild(li);
+            });
+            document.getElementById('ai-breakdown-container').classList.remove('hidden');
+        } else {
+            document.getElementById('ai-breakdown-container').classList.add('hidden');
+        }
 
         loadingEl.classList.add('hidden');
         resultEl.classList.remove('hidden');
@@ -375,6 +418,106 @@ captureBtn.addEventListener('click', async () => {
         captureBtn.classList.remove('hidden');
     }
 });
+
+document.getElementById('discard-meal-btn').addEventListener('click', () => {
+    scannedMealTemp = null;
+    resultEl.classList.add('hidden');
+    captureBtn.classList.remove('hidden');
+});
+
+document.getElementById('save-meal-btn').addEventListener('click', () => {
+    if (!scannedMealTemp) return;
+    state.meals.push(scannedMealTemp);
+    
+    // Manage Recent Meals (MFP style)
+    addRecentMeal({
+        name: scannedMealTemp.name,
+        calories: scannedMealTemp.calories,
+        protein: scannedMealTemp.protein,
+        carbs: scannedMealTemp.carbs,
+        fat: scannedMealTemp.fat
+    });
+
+    saveState();
+    scannedMealTemp = null;
+    resultEl.classList.add('hidden');
+    captureBtn.classList.remove('hidden');
+});
+
+// Natural Language AI Logging (Cal AI style)
+const aiTextBtn = document.getElementById('ai-text-btn');
+if (aiTextBtn) {
+    aiTextBtn.addEventListener('click', async () => {
+        const desc = document.getElementById('ai-text-desc').value.trim();
+        if (!desc) return;
+
+        aiTextBtn.disabled = true;
+        loadingEl.classList.remove('hidden');
+        loadingEl.querySelector('p').innerText = "AI parsing your meal...";
+
+        const promptText = `Analyze this food description: "${desc}". Return ONLY a valid JSON object with: 
+            "name" (string), "calories" (number), "protein" (number), "carbs" (number), "fat" (number),
+            "confidence" (number, 0-100),
+            "breakdown" (array of objects with "item" and "calories" keys showing major ingredients found).
+            STRICTLY ONLY JSON.`;
+
+        try {
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            };
+
+            const res = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            let textResult = data.candidates[0].content.parts[0].text;
+            const match = textResult.match(/\{[\s\S]*\}/);
+            const mealData = JSON.parse(match[0]);
+
+            scannedMealTemp = {
+                id: Date.now().toString(),
+                name: mealData.name,
+                calories: mealData.calories,
+                protein: mealData.protein,
+                carbs: mealData.carbs,
+                fat: mealData.fat,
+                confidence: mealData.confidence,
+                breakdown: mealData.breakdown,
+                timestamp: getDisplayDate().getTime()
+            };
+
+            // Populate Result UI
+            document.getElementById('ai-meal-name').innerText = scannedMealTemp.name;
+            document.getElementById('res-cal').innerText = scannedMealTemp.calories;
+            document.getElementById('res-pro').innerText = scannedMealTemp.protein;
+            document.getElementById('res-car').innerText = scannedMealTemp.carbs;
+            document.getElementById('res-fat').innerText = scannedMealTemp.fat;
+            document.getElementById('ai-confidence').innerText = `${scannedMealTemp.confidence}% Confidence`;
+            
+            const breakdownList = document.getElementById('ai-breakdown-list');
+            breakdownList.innerHTML = '';
+            mealData.breakdown.forEach(item => {
+                const li = document.createElement('li');
+                li.style = "display:flex; justify-content:space-between; margin-bottom:4px; color:var(--text-secondary);";
+                li.innerHTML = `<span>• ${item.item}</span> <span style="color:white;">${item.calories} kcal</span>`;
+                breakdownList.appendChild(li);
+            });
+            document.getElementById('ai-breakdown-container').classList.remove('hidden');
+
+            loadingEl.classList.add('hidden');
+            resultEl.classList.remove('hidden');
+            document.getElementById('ai-text-desc').value = '';
+        } catch (e) {
+            alert("AI couldn't understand that. Try being more specific!");
+        } finally {
+            aiTextBtn.disabled = false;
+        }
+    });
+}
 
 // === MANUAL BARCODE FETCH ===
 async function lookupBarcodeOpenFoodFacts(barcode) {
@@ -978,6 +1121,53 @@ window.deleteWorkout = function(ts) {
     }
 }
 
+// === WATER & RECENT MEALS HELPERS ===
+window.updateWater = function(val) {
+    state.waterIntake = Math.max(0, state.waterIntake + val);
+    saveState();
+};
+
+function addRecentMeal(meal) {
+    // Keep unique by name, most recent first
+    state.recentMeals = state.recentMeals.filter(m => m.name !== meal.name);
+    state.recentMeals.unshift(meal);
+    state.recentMeals = state.recentMeals.slice(0, 10); // Limit to top 10
+}
+
+function renderRecentMeals() {
+    const list = document.getElementById('recent-list');
+    if (!list) return;
+    
+    if (state.recentMeals.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="font-size:12px;">No recent meals yet.</div>';
+        return;
+    }
+
+    list.innerHTML = '';
+    state.recentMeals.forEach(meal => {
+        const item = document.createElement('div');
+        item.className = 'card';
+        item.style = "min-width:140px; padding:12px; cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);";
+        item.innerHTML = `
+            <div style="font-size:13px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${meal.name}</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">${meal.calories} kcal</div>
+        `;
+        item.onclick = () => {
+            if (confirm(`Log "${meal.name}" for ${document.getElementById('current-date').innerText}?`)) {
+                state.meals.push({
+                    ...meal,
+                    id: Date.now().toString(),
+                    timestamp: getDisplayDate().getTime(),
+                    type: 'other'
+                });
+                saveState();
+                alert(`Logged ${meal.name}!`);
+            }
+        };
+        list.appendChild(item);
+    });
+}
+
 // Initial Render & Setup
 function initApp() {
     if (!state.profile) {
@@ -988,10 +1178,24 @@ function initApp() {
         document.getElementById('manual-carb-goal').value = state.profile.macros.carbs;
         document.getElementById('manual-fat-goal').value = state.profile.macros.fat;
     }
+
+    // Streak Check
+    if (state.lastStreakDate) {
+        const last = new Date(state.lastStreakDate);
+        const today = new Date();
+        const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) {
+            state.streak = 0; // Streak broken
+            state.lastStreakDate = null;
+            saveState();
+        }
+    }
+
     renderDashboard();
     renderRecipes();
     renderProfile();
     renderWorkouts();
+    renderRecentMeals();
 }
 
 document.getElementById('manual-save-btn').addEventListener('click', () => {

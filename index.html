@@ -62,6 +62,21 @@
                     </div>
                 </div>
 
+                <div class="header-stats" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <div class="streak-badge" title="Protein Goal Streak">
+                        <i class="fa-solid fa-fire" style="color:#ff4d00; margin-right:4px;"></i>
+                        <span id="streak-val">0</span> Day Streak
+                    </div>
+                    <div class="water-tracker" style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:8px 16px; border-radius:20px;">
+                        <i class="fa-solid fa-droplet" style="color:#00d2ff;"></i>
+                        <span id="water-val">0</span> Glasses
+                        <div style="display:flex; gap:8px;">
+                            <button onclick="updateWater(-1)" class="btn-icon" style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fa-solid fa-minus"></i></button>
+                            <button onclick="updateWater(1)" class="btn-icon" style="background:transparent; border:none; color:var(--accent-blue); cursor:pointer;"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="macro-summary">
                     <!-- Calories Main Circle -->
                     <div class="macro-main">
@@ -130,8 +145,16 @@
                         </div>
                     </div>
                     
-                    <div class="camera-controls">
-                        <button id="capture-btn" class="btn btn-primary btn-large glow"><i class="fa-solid fa-camera"></i> Scan Meal</button>
+                    <div class="camera-controls" style="margin-top:16px;">
+                        <button id="capture-btn" class="btn btn-primary btn-large glow full-width"><i class="fa-solid fa-camera"></i> Scan Meal</button>
+                    </div>
+
+                    <div style="margin-top:24px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px;">
+                        <small class="subtitle" style="display:block; margin-bottom:8px;">Or Describe Your Meal...</small>
+                        <div style="display:flex; gap:8px; align-items:flex-end;">
+                            <textarea id="ai-text-desc" placeholder="e.g. A chicken breast, cup of rice and avocado..." class="input-full" style="margin:0; min-height:80px; flex:1; padding:12px; font-size:14px;"></textarea>
+                            <button id="ai-text-btn" class="btn btn-primary" style="height:80px; width:60px;"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
                     </div>
 
                     <!-- AI Loading State -->
@@ -149,6 +172,17 @@
                             <div class="res-stat"><span id="res-pro">0</span>g<br><small>Protein</small></div>
                             <div class="res-stat"><span id="res-car">0</span>g<br><small>Carbs</small></div>
                             <div class="res-stat"><span id="res-fat">0</span>g<br><small>Fat</small></div>
+                        </div>
+
+                        <!-- AI Breakdown (Cal AI style) -->
+                        <div id="ai-breakdown-container" style="margin-top:20px; text-align:left; background:rgba(0,0,0,0.2); padding:16px; border-radius:var(--border-radius-md);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <h4 style="font-size:13px; color:var(--text-secondary); text-transform:uppercase;">AI breakdown</h4>
+                                <span id="ai-confidence" style="font-size:12px; color:var(--accent-blue); background:rgba(0,229,255,0.1); padding:2px 8px; border-radius:10px;">--% Confidence</span>
+                            </div>
+                            <ul id="ai-breakdown-list" style="list-style:none; padding:0; font-size:13px;">
+                                <!-- Filled by JS -->
+                            </ul>
                         </div>
                         <div class="input-full" style="padding:0; background:transparent; border:none;">
                             <label>Meal Type</label>
@@ -199,6 +233,14 @@
                     </div>
 
                     <button id="man-save-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-plus"></i> Save to Log</button>
+                    
+                    <!-- Recent Meals Shelf (MFP style) -->
+                    <div id="recent-meals-shelf" style="margin-top:32px;">
+                        <h3 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">Recent Meals</h3>
+                        <div id="recent-list" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px;">
+                            <!-- Filled by JS -->
+                        </div>
+                    </div>
                 </div>
             </section>
 
