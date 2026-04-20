@@ -489,39 +489,7 @@ if (mediaInput) {
     });
 }
 
-document.getElementById('discard-meal-btn').addEventListener('click', () => {
-    scannedMealTemp = null;
-    resultEl.classList.add('hidden');
-    captureBtn.classList.remove('hidden');
-    document.getElementById('take-photo-btn').classList.remove('hidden');
-});
-
-document.getElementById('save-meal-btn').addEventListener('click', () => {
-    if (!scannedMealTemp) return;
-    
-    // Set meal type from dropdown
-    scannedMealTemp.type = document.getElementById('res-meal-type').value;
-    
-    state.meals.push(scannedMealTemp);
-    
-    // Manage Recent Meals (MFP style)
-    addRecentMeal({
-        name: scannedMealTemp.name,
-        calories: scannedMealTemp.calories,
-        protein: scannedMealTemp.protein,
-        carbs: scannedMealTemp.carbs,
-        fat: scannedMealTemp.fat
-    });
-
-    saveState();
-    scannedMealTemp = null;
-    
-    // Reset UI & redirect to dashboard
-    resultEl.classList.add('hidden');
-    captureBtn.classList.remove('hidden');
-    document.getElementById('take-photo-btn').classList.remove('hidden');
-    document.querySelector('.nav-item[data-target="view-dashboard"]').click();
-});
+// Scanner Result Listeners (Moved to initialization block at bottom)
 
 // Natural Language AI Logging (Cal AI style)
 const aiTextBtn = document.getElementById('ai-text-btn');
@@ -957,23 +925,6 @@ window.deleteWeight = function(id) {
 
 // === PROFILE AND ONBOARDING ===
 
-function renderProfile() {
-    if (!state.profile) return;
-    
-    // Update Goals Display
-    document.getElementById('prof-cal').innerText = state.profile.macros.calories;
-    document.getElementById('prof-pro').innerText = state.profile.macros.protein;
-    document.getElementById('prof-car').innerText = state.profile.macros.carbs;
-    document.getElementById('prof-fat').innerText = state.profile.macros.fat;
-    
-    // Update Stats Display
-    const p = state.profile;
-    document.getElementById('prof-stats-list').innerHTML = `
-        <li class="list-item"><span class="list-item-title">Age / Sex</span> <span class="list-item-val">${p.age} / ${p.gender}</span></li>
-        <li class="list-item"><span class="list-item-title">Height / Weight</span> <span class="list-item-val">${p.height}" / ${p.weight} lbs</span></li>
-        <li class="list-item"><span class="list-item-title">Goal Weight</span> <span class="list-item-val">${p.goalWeight} lbs</span></li>
-    `;
-}
 
 document.getElementById('ob-submit-btn').addEventListener('click', () => {
     const gender = document.getElementById('ob-gender').value;
@@ -1016,6 +967,8 @@ document.getElementById('ob-submit-btn').addEventListener('click', () => {
 
     state.profile = {
         gender, age, height, weight, goalWeight, activity,
+        bmr: Math.round(bmr),
+        tdee: Math.round(tdee),
         macros: { calories: dailyCalories, protein, carbs, fat }
     };
 
@@ -1351,39 +1304,106 @@ if (testApiKeyBtn) {
     });
 }
 
-// Initial Render & Setup
+// === INITIALIZATION & STABLE LISTENERS ===
 function initApp() {
-    if (!state.profile) {
-        document.getElementById('view-onboarding').classList.remove('hidden');
-    } else {
-        document.getElementById('manual-cal-goal').value = state.profile.macros.calories;
-        document.getElementById('manual-pro-goal').value = state.profile.macros.protein;
-        document.getElementById('manual-carb-goal').value = state.profile.macros.carbs;
-        document.getElementById('manual-fat-goal').value = state.profile.macros.fat;
-    }
+    console.log("NutraTrack: Initializing App...");
+    try {
+        if (!state.profile) {
+            document.getElementById('view-onboarding').classList.remove('hidden');
+        } else {
+            // Restore Goals across UI
+            if (state.profile.macros) {
+                MACRO_GOALS = state.profile.macros;
+                const calGoalInput = document.getElementById('manual-cal-goal');
+                if (calGoalInput) calGoalInput.value = MACRO_GOALS.calories || 0;
+                
+                const proGoalInput = document.getElementById('manual-pro-goal');
+                if (proGoalInput) proGoalInput.value = MACRO_GOALS.protein || 0;
+                
+                const carbGoalInput = document.getElementById('manual-carb-goal');
+                if (carbGoalInput) carbGoalInput.value = MACRO_GOALS.carbs || 0;
+                
+                const fatGoalInput = document.getElementById('manual-fat-goal');
+                if (fatGoalInput) fatGoalInput.value = MACRO_GOALS.fat || 0;
+            }
+        }
 
-    renderDashboard();
-    renderRecipes();
-    renderProfile();
-    renderWorkouts();
-    renderRecentMeals();
+        renderDashboard();
+        renderRecipes();
+        renderProfile();
+        renderWorkouts();
+        renderRecentMeals();
+        
+        console.log("NutraTrack: Ready.");
+    } catch (err) {
+        console.error("NutraTrack: Startup Error:", err);
+    }
 }
 
-document.getElementById('manual-save-btn').addEventListener('click', () => {
-    const cal = parseInt(document.getElementById('manual-cal-goal').value);
-    const pro = parseInt(document.getElementById('manual-pro-goal').value);
-    const carb = parseInt(document.getElementById('manual-carb-goal').value);
-    const fat = parseInt(document.getElementById('manual-fat-goal').value);
-
-    if (!cal || !pro || !carb || !fat) return alert("Please fill all macro goals to save manually.");
-
-    if (!state.profile) {
-        state.profile = { age: 0, height: 0, weight: 0, goalWeight: 0, gender: 'N/A', activity: 1, macros: {} };
+// Final Global Listeners Attached AFTER DOM functions ready
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Scanner Results
+    const discardBtn = document.getElementById('discard-meal-btn');
+    if (discardBtn) {
+        discardBtn.addEventListener('click', () => {
+            console.log("Scanner: Discarding result.");
+            scannedMealTemp = null;
+            resultEl.classList.add('hidden');
+            captureBtn.classList.remove('hidden');
+            document.getElementById('take-photo-btn').classList.remove('hidden');
+        });
     }
-    
-    state.profile.macros = { calories: cal, protein: pro, carbs: carb, fat: fat };
-    saveState();
-    alert("Goals updated successfully!");
-});
 
-initApp();
+    const saveMealBtn = document.getElementById('save-meal-btn');
+    if (saveMealBtn) {
+        saveMealBtn.addEventListener('click', () => {
+            console.log("Scanner: Saving result.");
+            if (!scannedMealTemp) {
+                console.warn("Scanner: No temporary meal data to save.");
+                return;
+            }
+            
+            scannedMealTemp.type = document.getElementById('res-meal-type').value;
+            state.meals.push(scannedMealTemp);
+            
+            addRecentMeal({
+                name: scannedMealTemp.name,
+                calories: scannedMealTemp.calories,
+                protein: scannedMealTemp.protein,
+                carbs: scannedMealTemp.carbs,
+                fat: scannedMealTemp.fat
+            });
+
+            saveState();
+            scannedMealTemp = null;
+            
+            resultEl.classList.add('hidden');
+            captureBtn.classList.remove('hidden');
+            document.getElementById('take-photo-btn').classList.remove('hidden');
+            document.querySelector('.nav-item[data-target="view-dashboard"]').click();
+        });
+    }
+
+    // 2. Manual Goals Save
+    const manualSaveBtn = document.getElementById('manual-save-btn');
+    if (manualSaveBtn) {
+        manualSaveBtn.addEventListener('click', () => {
+            const cal = parseInt(document.getElementById('manual-cal-goal').value);
+            const pro = parseInt(document.getElementById('manual-pro-goal').value);
+            const carb = parseInt(document.getElementById('manual-carb-goal').value);
+            const fat = parseInt(document.getElementById('manual-fat-goal').value);
+
+            if (!cal || !pro || !carb || !fat) return alert("Please fill all macro goals to save manually.");
+
+            if (!state.profile) {
+                state.profile = { age: 0, height: 0, weight: 0, goalWeight: 0, gender: 'N/A', activity: 1, macros: {} };
+            }
+            
+            state.profile.macros = { calories: cal, protein: pro, carbs: carb, fat: fat };
+            saveState();
+            alert("Goals updated successfully!");
+        });
+    }
+
+    initApp();
+});
