@@ -1,7 +1,7 @@
 // === CORE SETTINGS ===
 function getGeminiUrl(key) {
-    // Switching to v1 stable for broader key compatibility
-    return `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
+    // Reverting to v1beta for better compatibility with free-tier keys
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
 }
 
 // === STATE MANAGEMENT ===
@@ -336,8 +336,8 @@ captureBtn.addEventListener('click', async () => {
 
     try {
         const payload = {
-            contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }] }]
+            // removed responseMimeType to prevent 400 errors
         };
 
         const res = await fetch(getGeminiUrl(state.apiKey), {
@@ -465,8 +465,8 @@ if (aiTextBtn) {
 
         try {
             const payload = {
-                contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: { responseMimeType: "application/json" }
+                contents: [{ parts: [{ text: promptText }] }]
+                // removed responseMimeType to prevent 400 errors
             };
 
             const res = await fetch(getGeminiUrl(state.apiKey), {
