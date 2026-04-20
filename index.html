@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NutraTrack - AI Macro Scanner</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <meta name="theme-color" content="#0a0c10">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NutraTrack">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').then(reg => {
+            console.log('ServiceWorker registration successful');
+          }).catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
+</head>
+<body class="dark-theme gym-aesthetic">
+
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="logo">Nutra<span class="neon-accent">Track</span></h1>
+            <div class="user-avatar"><i class="fa-solid fa-dumbbell"></i></div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            
+            <!-- VIEW: DASHBOARD -->
+            <section id="view-dashboard" class="view active-view">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                    <h2>Diary</h2>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <button id="prev-date" class="btn btn-secondary" style="padding:6px 10px;"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="current-date" class="subtitle" style="font-weight:700; font-size:16px; color:white; min-width: 100px; text-align:center;">Today</span>
+                        <button id="next-date" class="btn btn-secondary" style="padding:6px 10px;"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="macro-summary">
+                    <!-- Calories Main Circle -->
+                    <div class="macro-main">
+                        <div class="circle-progress large">
+                            <svg viewBox="0 0 100 100">
+                                <path class="circle-bg" d="M50 10 a 40 40 0 0 1 0 80 a 40 40 0 0 1 0 -80" />
+                                <path class="circle-fill" id="cal-progress" stroke-dasharray="250" stroke-dashoffset="250" d="M50 10 a 40 40 0 0 1 0 80 a 40 40 0 0 1 0 -80" />
+                            </svg>
+                            <div class="circle-content">
+                                <span class="value" id="cal-val">0</span>
+                                <span class="label">/ <span id="cal-goal">2500</span> kcal</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sub Macros -->
+                    <div class="macro-subs">
+                        <div class="macro-card">
+                            <div class="macro-name protein">Protein</div>
+                            <div class="macro-amount"><span id="pro-val">0</span>g <span style="font-size: 12px; color: var(--text-secondary);">/ <span id="pro-goal">0</span>g</span></div>
+                            <div class="macro-bar"><div class="fill bg-protein" id="pro-bar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="macro-card">
+                            <div class="macro-name carbs">Carbs</div>
+                            <div class="macro-amount"><span id="carb-val">0</span>g <span style="font-size: 12px; color: var(--text-secondary);">/ <span id="carb-goal">0</span>g</span></div>
+                            <div class="macro-bar"><div class="fill bg-carbs" id="carb-bar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="macro-card">
+                            <div class="macro-name fat">Fat</div>
+                            <div class="macro-amount"><span id="fat-val">0</span>g <span style="font-size: 12px; color: var(--text-secondary);">/ <span id="fat-goal">0</span>g</span></div>
+                            <div class="macro-bar"><div class="fill bg-fat" id="fat-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-meals">
+                    <div id="diary-sections">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: SCANNER -->
+            <section id="view-scanner" class="view hidden-view">
+                <div class="section-header">
+                    <h2>Log A Meal</h2>
+                    <p class="subtitle">Scan or enter macros manually</p>
+                </div>
+                
+                <div class="scanner-tabs" style="display:flex; justify-content:center; gap:8px; margin-bottom: 20px;">
+                    <button id="tab-cam-btn" class="btn btn-primary" style="flex:1; padding: 10px;">Meal</button>
+                    <button id="tab-label-btn" class="btn btn-secondary" style="flex:1; padding: 10px;">Barcode</button>
+                    <button id="tab-man-btn" class="btn btn-secondary" style="flex:1; padding: 10px;">Manual</button>
+                </div>
+
+                <div style="text-align:center; margin-bottom:16px;">
+                    <span class="subtitle" id="scan-target-date">Logging to: Today</span>
+                </div>
+
+                <div id="scanner-cam-view">
+                    <div class="camera-container">
+                        <video id="camera-feed" autoplay playsinline></video>
+                        <canvas id="camera-canvas" style="display: none;"></canvas>
+                        <div class="scanner-overlay">
+                            <div class="scan-frame"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="camera-controls">
+                        <button id="capture-btn" class="btn btn-primary btn-large glow"><i class="fa-solid fa-camera"></i> Scan Meal</button>
+                    </div>
+
+                    <!-- AI Loading State -->
+                    <div id="ai-loading" class="hidden">
+                        <div class="spinner"></div>
+                        <p>Analyzing macros...</p>
+                    </div>
+
+                    <!-- AI Result -->
+                    <div id="ai-result" class="hidden slide-up">
+                        <h3>Identified Meal</h3>
+                        <p id="ai-meal-name" class="highlight">...</p>
+                        <div class="result-macros">
+                            <div class="res-stat"><span id="res-cal">0</span><br><small>kcal</small></div>
+                            <div class="res-stat"><span id="res-pro">0</span>g<br><small>Protein</small></div>
+                            <div class="res-stat"><span id="res-car">0</span>g<br><small>Carbs</small></div>
+                            <div class="res-stat"><span id="res-fat">0</span>g<br><small>Fat</small></div>
+                        </div>
+                        <div class="input-full" style="padding:0; background:transparent; border:none;">
+                            <label>Meal Type</label>
+                            <select id="res-meal-type" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:none; margin-top:8px;">
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="dinner">Dinner</option>
+                                <option value="snack">Snack</option>
+                            </select>
+                        </div>
+                        <div class="action-row">
+                            <button id="discard-meal-btn" class="btn btn-secondary">Discard</button>
+                            <button id="save-meal-btn" class="btn btn-primary glow">Log Meal</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="scanner-man-view" class="hidden card form-card">
+                    <h3>Manual Log</h3>
+
+                    <!-- Manual Barcode Input Fallback -->
+                    <div class="input-full" id="manual-barcode-container" style="margin-bottom:16px; border:1px solid var(--accent-blue);">
+                        <small class="subtitle" style="display:block; margin-bottom:8px;">Enter Barcode Manually</small>
+                        <div style="display:flex; gap:8px;">
+                            <input type="number" id="man-barcode-input" placeholder="e.g. 8769283461" class="full-width">
+                            <button id="man-barcode-btn" class="btn btn-primary" style="padding: 10px;"><i class="fa-solid fa-search"></i></button>
+                        </div>
+                        <span id="barcode-status" class="subtitle" style="display:none; margin-top:8px;"></span>
+                    </div>
+
+                    <input type="text" id="man-name" placeholder="Food Name (Optional)" class="input-full" style="margin-top:12px;">
+                    
+                    <div class="macros-inputs">
+                        <div class="input-col"><input type="number" id="man-cal" placeholder="Calories"><small>kcal</small></div>
+                        <div class="input-col"><input type="number" id="man-pro" placeholder="Protein"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="man-car" placeholder="Carbs"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="man-fat" placeholder="Fat"><small>g</small></div>
+                    </div>
+
+                    <div class="input-full" style="padding:0; background:transparent; border:none; margin-bottom: 24px;">
+                        <label>Meal Type</label>
+                        <select id="man-meal-type" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:none; margin-top:8px; margin-bottom:0;">
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snack">Snack</option>
+                        </select>
+                    </div>
+
+                    <button id="man-save-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-plus"></i> Save to Log</button>
+                </div>
+            </section>
+
+            <!-- VIEW: PROGRESS -->
+            <section id="view-progress" class="view hidden-view">
+                <div class="section-header">
+                    <h2>Progress</h2>
+                </div>
+                
+                <div class="scanner-tabs" style="display:flex; justify-content:center; gap:12px; margin-bottom: 24px;">
+                    <button id="tab-weight-btn" class="btn btn-primary" style="flex:1;">Body Weight</button>
+                    <button id="tab-workout-btn" class="btn btn-secondary" style="flex:1;">Workouts</button>
+                </div>
+
+                <!-- SUB VIEW: WEIGHT -->
+                <div id="subview-weight">
+                    <div class="card glass-card">
+                        <canvas id="weightChart"></canvas>
+                    </div>
+
+                    <div class="log-weight-form" style="margin-top:24px;">
+                        <h3>Log New Weight</h3>
+                        <div class="input-group row-group">
+                            <input type="number" id="weight-input" step="0.1" placeholder="e.g. 180.5">
+                            <span class="unit">lbs</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
+                            <label class="btn btn-secondary" style="flex:1; cursor:pointer;">
+                                <i class="fa-solid fa-camera"></i> Progress Pic
+                                <input type="file" id="weight-photo" accept="image/*" style="display:none;">
+                            </label>
+                            <button id="add-weight-btn" class="btn btn-primary glow" style="flex:1;"><i class="fa-solid fa-plus"></i> Save</button>
+                        </div>
+                        <span id="photo-status" style="display:block; margin-top:8px; font-size:12px; color:var(--text-secondary);"></span>
+                    </div>
+                    
+                    <div class="weight-history" style="margin-top:24px;">
+                        <h3>History</h3>
+                        <div id="weight-list" class="list"></div>
+                    </div>
+                </div>
+
+                <!-- SUB VIEW: WORKOUTS -->
+                <div id="subview-workouts" class="hidden">
+                    <div id="workout-history">
+                        <button id="new-workout-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-dumbbell"></i> Start Empty Workout</button>
+                        <div id="workout-list" class="list" style="margin-top:24px;"></div>
+                    </div>
+
+                    <div id="active-workout-view" class="hidden card form-card">
+                        <input type="text" id="workout-name" placeholder="Workout Name (e.g. Push Day)" class="input-full" style="font-size:20px; font-weight:bold;">
+                        
+                        <div style="display:flex; gap:8px; margin-bottom: 16px;">
+                            <select id="exercise-select" class="input-full" style="margin:0; flex:2;">
+                                <option value="Bench Press">Bench Press</option>
+                                <option value="Squat">Squat</option>
+                                <option value="Deadlift">Deadlift</option>
+                                <option value="Pull-ups">Pull-ups</option>
+                                <option value="Leg Press">Leg Press</option>
+                                <option value="Shoulder Press">Shoulder Press</option>
+                                <option value="Bicep Curls">Bicep Curls</option>
+                                <option value="Tricep Extensions">Tricep Extensions</option>
+                                <option value="Custom...">Custom...</option>
+                            </select>
+                            <button id="add-exercise-btn" class="btn btn-secondary"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+
+                        <div id="active-exercises-list">
+                            <!-- JS driven sets/reps ui -->
+                        </div>
+
+                        <div style="display:flex; gap:12px; margin-top: 24px;">
+                            <button id="cancel-workout-btn" class="btn btn-secondary" style="flex:1;">Cancel</button>
+                            <button id="finish-workout-btn" class="btn btn-primary glow" style="flex:2;">Finish</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: RECIPES -->
+            <section id="view-recipes" class="view hidden-view">
+                <div class="section-header">
+                    <h2>Custom Recipes</h2>
+                    <p class="subtitle">Build your own meals</p>
+                </div>
+
+                <div class="add-recipe-card card form-card">
+                    <input type="text" id="recipe-name" placeholder="Recipe Name (e.g. Protein Oats)" class="input-full">
+                    
+                    <div class="macros-inputs">
+                        <div class="input-col"><input type="number" id="rec-cal" placeholder="Calories"><small>kcal</small></div>
+                        <div class="input-col"><input type="number" id="rec-pro" placeholder="Protein"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="rec-car" placeholder="Carbs"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="rec-fat" placeholder="Fat"><small>g</small></div>
+                    </div>
+                    <button id="add-recipe-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-folder-plus"></i> Save Recipe</button>
+                </div>
+
+                <div class="saved-recipes">
+                    <h3>Saved Recipes</h3>
+                    <div id="recipe-list" class="list">
+                        <!-- Filled by JS -->
+                        <div class="empty-state">No recipes saved.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: PROFILE -->
+            <section id="view-profile" class="view hidden-view">
+                <div class="section-header">
+                    <h2>Profile & Goals</h2>
+                    <p class="subtitle">Manage your personal data</p>
+                </div>
+                
+                <div class="card glass-card" style="margin-bottom: 24px;">
+                    <h3>Current Goals</h3>
+                    <div class="result-macros" style="margin-top: 16px;">
+                        <div class="res-stat"><span id="prof-cal">0</span><br><small>kcal</small></div>
+                        <div class="res-stat"><span id="prof-pro">0</span>g<br><small>Protein</small></div>
+                        <div class="res-stat"><span id="prof-car">0</span>g<br><small>Carbs</small></div>
+                        <div class="res-stat"><span id="prof-fat">0</span>g<br><small>Fat</small></div>
+                    </div>
+                </div>
+
+                <div class="card form-card">
+                    <h3>Your Stats</h3>
+                    <ul class="list" id="prof-stats-list" style="margin-top: 12px; margin-bottom: 24px;">
+                        <!-- Filled by JS -->
+                    </ul>
+                    <button id="recalculate-btn" class="btn btn-secondary full-width"><i class="fa-solid fa-calculator"></i> Retake Initial Quiz</button>
+                </div>
+
+                <div class="card form-card" style="margin-top: 24px;">
+                    <h3>Manually Adjust Goals</h3>
+                    <p class="subtitle" style="margin-bottom: 16px;">Tweak your daily targets directly.</p>
+                    <div class="macros-inputs">
+                        <div class="input-col"><input type="number" id="manual-cal-goal" placeholder="Calories"><small>kcal</small></div>
+                        <div class="input-col"><input type="number" id="manual-pro-goal" placeholder="Protein"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="manual-carb-goal" placeholder="Carbs"><small>g</small></div>
+                        <div class="input-col"><input type="number" id="manual-fat-goal" placeholder="Fat"><small>g</small></div>
+                    </div>
+                    <button id="manual-save-btn" class="btn btn-primary full-width glow"><i class="fa-solid fa-check"></i> Save Custom Goals</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- ONBOARDING OVERLAY -->
+        <div id="view-onboarding" class="onboarding-overlay hidden">
+            <div class="onboarding-content">
+                <h2>Welcome to NutraTrack</h2>
+                <p class="subtitle" style="margin-bottom:24px;">Let's personalize your goals.</p>
+                
+                <div class="input-full">
+                    <label>Biological Sex</label>
+                    <select id="ob-gender" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:none; margin-top:8px;">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+
+                <div class="macros-inputs">
+                    <div class="input-col"><input type="number" id="ob-age" placeholder="Age"><small>yrs</small></div>
+                    <div class="input-col"><input type="number" id="ob-height" placeholder="Height"><small>inches</small></div>
+                    <div class="input-col"><input type="number" id="ob-weight" placeholder="Weight"><small>lbs</small></div>
+                    <div class="input-col"><input type="number" id="ob-goal" placeholder="Goal Wt"><small>lbs</small></div>
+                </div>
+
+                <div class="input-full">
+                    <label>Activity Level</label>
+                    <select id="ob-activity" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:none; margin-top:8px;">
+                        <option value="1.2">Sedentary (Office job)</option>
+                        <option value="1.375">Light Exercise (1-2 days/wk)</option>
+                        <option value="1.55">Moderate (3-5 days/wk)</option>
+                        <option value="1.725">Heavy (6-7 days/wk)</option>
+                        <option value="1.9">Athlete / Physical Job</option>
+                    </select>
+                </div>
+
+                <button id="ob-submit-btn" class="btn btn-primary full-width glow" style="margin-top:16px;">Calculate My Macros</button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-target="view-dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Today</span>
+            </a>
+            <a href="#" class="nav-item" data-target="view-recipes">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Recipes</span>
+            </a>
+            <a href="#" class="nav-item" data-target="view-scanner" style="position:relative;">
+                <div class="scan-button glow">
+                    <i class="fa-solid fa-camera"></i>
+                </div>
+            </a>
+            <a href="#" class="nav-item" data-target="view-progress">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Progress</span>
+            </a>
+            <a href="#" class="nav-item" data-target="view-profile">
+                <i class="fa-solid fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- PHOTO MODAL LIGHTBOX -->
+    <div id="photo-modal" class="photo-modal hidden">
+        <span style="position:absolute; top:20px; right:20px; font-size:24px; font-weight:bold; color:white;"><i class="fa-solid fa-xmark"></i></span>
+        <img id="photo-modal-img" src="" alt="Progress Picture">
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
