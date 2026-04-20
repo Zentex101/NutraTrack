@@ -1,6 +1,7 @@
 // === CORE SETTINGS ===
 function getGeminiUrl(key) {
-    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
+    // Switching to v1 stable for broader key compatibility
+    return `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
 }
 
 // === STATE MANAGEMENT ===
@@ -1184,8 +1185,14 @@ function renderProfile() {
     document.getElementById('manual-carb-goal').value = state.profile.macros.carbs || 0;
     document.getElementById('manual-fat-goal').value = state.profile.macros.fat || 0;
     
-    // Update API Key Input
+    // Update API Key Input & Verification
+    const maskedKey = state.apiKey ? `Using key ending in: ...${state.apiKey.slice(-4)}` : "No key configured.";
     document.getElementById('api-key-input').value = state.apiKey || '';
+    const statusEl = document.getElementById('api-key-status');
+    if (statusEl) {
+        statusEl.innerText = maskedKey;
+        statusEl.style.color = state.apiKey ? "var(--text-secondary)" : "var(--color-protein)";
+    }
 
     const list = document.getElementById('prof-stats-list');
     if (list) {

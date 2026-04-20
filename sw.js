@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nutratrack-security-v1';
+const CACHE_NAME = 'nutratrack-stability-v1';
 const ASSETS = [
   '/',
   '/index.html',
