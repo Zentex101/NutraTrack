@@ -321,7 +321,8 @@ function hardStopCamera() {
 
 async function runAIVisionScan(base64Data) {
     // UI Updates
-    captureBtn.classList.add('hidden');
+    document.getElementById('capture-btn').classList.add('hidden');
+    document.getElementById('take-photo-btn').classList.add('hidden');
     resultEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
 
@@ -411,25 +412,52 @@ async function runAIVisionScan(base64Data) {
             document.getElementById('ai-breakdown-container').classList.remove('hidden');
         }
 
+    } finally {
         loadingEl.classList.add('hidden');
-        resultEl.classList.remove('hidden');
-    } catch (err) {
-        alert(`Scan failed: ${err.message}`);
-        captureBtn.classList.remove('hidden');
-        loadingEl.classList.add('hidden');
+        document.getElementById('snap-preview').classList.add('hidden');
+        document.getElementById('capture-btn').classList.remove('hidden');
+        document.getElementById('take-photo-btn').classList.remove('hidden');
     }
 }
 
+// LIVE SCAN: Rapid capture
 captureBtn.addEventListener('click', async () => {
     if (!stream) return;
     const ctx = canvasEl.getContext('2d');
     canvasEl.width = videoEl.videoWidth;
     canvasEl.height = videoEl.videoHeight;
     ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    const base64Full = canvasEl.toDataURL('image/jpeg', 0.8);
-    const base64Data = base64Full.split(',')[1];
-    runAIVisionScan(base64Data);
+    runAIVisionScan(canvasEl.toDataURL('image/jpeg', 0.8).split(',')[1]);
 });
+
+// TAKE PHOTO: Freeze frame + Flash capture
+const takePhotoBtn = document.getElementById('take-photo-btn');
+if (takePhotoBtn) {
+    takePhotoBtn.addEventListener('click', () => {
+        if (!stream) return;
+
+        // 1. Capture the image
+        const ctx = canvasEl.getContext('2d');
+        canvasEl.width = videoEl.videoWidth;
+        canvasEl.height = videoEl.videoHeight;
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+        const dataUrl = canvasEl.toDataURL('image/jpeg', 0.8);
+        
+        // 2. Freeze the UI
+        const preview = document.getElementById('snap-preview');
+        preview.src = dataUrl;
+        preview.classList.remove('hidden');
+        
+        // 3. Flash effect
+        const flash = document.getElementById('camera-flash');
+        flash.classList.remove('flash-active');
+        void flash.offsetWidth; // trigger reflow
+        flash.classList.add('flash-active');
+
+        // 4. Run Scan
+        runAIVisionScan(dataUrl.split(',')[1]);
+    });
+}
 
 // Photo Picker Listeners
 const mediaInput = document.getElementById('media-input');
