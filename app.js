@@ -1340,28 +1340,77 @@ function initApp() {
     }
 }
 
+// === INITIALIZATION & STABLE LISTENERS ===
+function initApp() {
+    console.log("NutraTrack: Initializing App...");
+    try {
+        if (!state.profile) {
+            document.getElementById('view-onboarding').classList.remove('hidden');
+        } else {
+            // Restore Goals across UI
+            if (state.profile.macros) {
+                MACRO_GOALS = state.profile.macros;
+                const calGoalInput = document.getElementById('manual-cal-goal');
+                if (calGoalInput) calGoalInput.value = MACRO_GOALS.calories || 0;
+                
+                const proGoalInput = document.getElementById('manual-pro-goal');
+                if (proGoalInput) proGoalInput.value = MACRO_GOALS.protein || 0;
+                
+                const carbGoalInput = document.getElementById('manual-carb-goal');
+                if (carbGoalInput) carbGoalInput.value = MACRO_GOALS.carbs || 0;
+                
+                const fatGoalInput = document.getElementById('manual-fat-goal');
+                if (fatGoalInput) fatGoalInput.value = MACRO_GOALS.fat || 0;
+            }
+        }
+
+        renderDashboard();
+        renderRecipes();
+        renderProfile();
+        renderWorkouts();
+        renderRecentMeals();
+        
+        console.log("NutraTrack: Ready.");
+    } catch (err) {
+        console.error("NutraTrack: Startup Error:", err);
+        alert("Startup Error: " + err.message);
+    }
+}
+
+// Global Error Handler for debugging
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    console.error("Global Error:", msg, "at", url, ":", lineNo);
+    // Only alert for major script failures
+    if (msg.toLowerCase().indexOf('script error') > -1) {
+        alert('Script Error: See Console for details');
+    } else {
+        // Optionally alert user during debug phase
+        // alert(msg + '\n' + url + ':' + lineNo);
+    }
+    return false;
+};
+
 // Final Global Listeners Attached AFTER DOM functions ready
-document.addEventListener('DOMContentLoaded', () => {
+function setupListeners() {
+    console.log("NutraTrack: Setting up listeners...");
+
     // 1. Scanner Results
     const discardBtn = document.getElementById('discard-meal-btn');
     if (discardBtn) {
-        discardBtn.addEventListener('click', () => {
+        discardBtn.onclick = () => {
             console.log("Scanner: Discarding result.");
             scannedMealTemp = null;
             resultEl.classList.add('hidden');
             captureBtn.classList.remove('hidden');
             document.getElementById('take-photo-btn').classList.remove('hidden');
-        });
+        };
     }
 
     const saveMealBtn = document.getElementById('save-meal-btn');
     if (saveMealBtn) {
-        saveMealBtn.addEventListener('click', () => {
+        saveMealBtn.onclick = () => {
             console.log("Scanner: Saving result.");
-            if (!scannedMealTemp) {
-                console.warn("Scanner: No temporary meal data to save.");
-                return;
-            }
+            if (!scannedMealTemp) return console.warn("Scanner: No temp data.");
             
             scannedMealTemp.type = document.getElementById('res-meal-type').value;
             state.meals.push(scannedMealTemp);
@@ -1381,19 +1430,19 @@ document.addEventListener('DOMContentLoaded', () => {
             captureBtn.classList.remove('hidden');
             document.getElementById('take-photo-btn').classList.remove('hidden');
             document.querySelector('.nav-item[data-target="view-dashboard"]').click();
-        });
+        };
     }
 
     // 2. Manual Goals Save
     const manualSaveBtn = document.getElementById('manual-save-btn');
     if (manualSaveBtn) {
-        manualSaveBtn.addEventListener('click', () => {
+        manualSaveBtn.onclick = () => {
             const cal = parseInt(document.getElementById('manual-cal-goal').value);
             const pro = parseInt(document.getElementById('manual-pro-goal').value);
             const carb = parseInt(document.getElementById('manual-carb-goal').value);
             const fat = parseInt(document.getElementById('manual-fat-goal').value);
 
-            if (!cal || !pro || !carb || !fat) return alert("Please fill all macro goals to save manually.");
+            if (!cal || !pro || !carb || !fat) return alert("Please fill all macro goals.");
 
             if (!state.profile) {
                 state.profile = { age: 0, height: 0, weight: 0, goalWeight: 0, gender: 'N/A', activity: 1, macros: {} };
@@ -1402,8 +1451,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.profile.macros = { calories: cal, protein: pro, carbs: carb, fat: fat };
             saveState();
             alert("Goals updated successfully!");
-        });
+        };
     }
+}
 
-    initApp();
-});
+// Execute immediately since we are at bottom of body
+setupListeners();
+initApp();
+
