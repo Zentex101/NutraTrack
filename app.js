@@ -728,15 +728,27 @@ photoInput.addEventListener('change', (e) => {
 
 document.getElementById('add-weight-btn').addEventListener('click', () => {
     const inputEl = document.getElementById('weight-input');
+    const dateInput = document.getElementById('weight-date').value;
     const val = parseFloat(inputEl.value);
     if (!val) return;
 
+    let targetDateStr = new Date().toLocaleDateString('en-US');
+    let targetTimestamp = new Date().getTime();
+
+    if (dateInput) {
+        // Splitting manually to prevent timezone shift off-by-one errors
+        const [y, m, d] = dateInput.split('-');
+        const parsedDate = new Date(y, m - 1, d);
+        targetDateStr = parsedDate.toLocaleDateString('en-US');
+        targetTimestamp = parsedDate.getTime();
+    }
+
     state.weights.push({
         id: Date.now().toString(),
-        date: new Date().toLocaleDateString('en-US'),
+        date: targetDateStr,
         weight: val,
         photo: tempWeightPhotoBase64,
-        timestamp: new Date().getTime()
+        timestamp: targetTimestamp
     });
     
     // Sort & Reset

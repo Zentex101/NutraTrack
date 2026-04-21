@@ -143,7 +143,7 @@
                     <div style="margin-top:24px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px;">
                         <small class="subtitle" style="display:block; margin-bottom:8px;">Or Describe Your Meal...</small>
                         <div style="display:flex; gap:8px; align-items:flex-end;">
-                            <textarea id="ai-text-desc" placeholder="e.g. A chicken breast, cup of rice and avocado..." class="input-full" style="margin:0; min-height:80px; flex:1; padding:12px; font-size:14px;"></textarea>
+                            <textarea id="ai-text-desc" placeholder="e.g. A chicken breast, cup of rice and avocado..." class="input-full" style="margin:0; min-height:80px; flex:1; padding:12px; font-size:14px; color:white; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);"></textarea>
                             <button id="ai-text-btn" class="btn btn-primary" style="height:80px; width:60px;"><i class="fa-solid fa-paper-plane"></i></button>
                         </div>
                     </div>
@@ -254,6 +254,9 @@
 
                     <div class="log-weight-form" style="margin-top:24px;">
                         <h3>Log New Weight</h3>
+                        <div class="input-full" style="padding:0; background:transparent; border:none; margin-bottom: 12px; margin-top: 8px;">
+                            <input type="date" id="weight-date" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); margin:0;">
+                        </div>
                         <div class="input-group row-group">
                             <input type="number" id="weight-input" step="0.1" placeholder="e.g. 180.5">
                             <span class="unit">lbs</span>
