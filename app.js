@@ -588,7 +588,11 @@ if (aiTextBtn) {
             resultEl.classList.remove('hidden');
             document.getElementById('ai-text-desc').value = '';
         } catch (e) {
-            alert("AI couldn't understand that. Try being more specific!");
+            if (e.message && e.message.includes("Google API Error")) {
+                alert(`Scanner Error: ${e.message}`);
+            } else {
+                alert("AI couldn't understand that. Try being more specific! (" + e.message + ")");
+            }
         } finally {
             aiTextBtn.disabled = false;
         }
