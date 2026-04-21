@@ -11,7 +11,7 @@ let state = {
     profile: JSON.parse(localStorage.getItem('mt_profile')) || null,
     workouts: JSON.parse(localStorage.getItem('mt_workouts')) || [],
     apiKey: localStorage.getItem('mt_api_key') || null,
-    apiKeyModel: localStorage.getItem('mt_api_model') || 'gemini-2.0-flash-exp',
+    apiKeyModel: localStorage.getItem('mt_api_model') || 'gemini-1.5-flash',
     recentMeals: JSON.parse(localStorage.getItem('mt_recent')) || []
 };
 
@@ -34,7 +34,7 @@ function saveState() {
     localStorage.setItem('mt_profile', JSON.stringify(state.profile));
     localStorage.setItem('mt_workouts', JSON.stringify(state.workouts));
     localStorage.setItem('mt_api_key', state.apiKey || '');
-    localStorage.setItem('mt_api_model', state.apiKeyModel || 'gemini-2.0-flash-exp');
+    localStorage.setItem('mt_api_model', state.apiKeyModel || 'gemini-1.5-flash');
     localStorage.setItem('mt_recent', JSON.stringify(state.recentMeals));
     
     if (state.profile) MACRO_GOALS = state.profile.macros;
@@ -1325,9 +1325,10 @@ if (testApiKeyBtn) {
             
             if (!res.ok) throw new Error(data.error?.message || "Invalid Key");
 
-            // Step 2: Look for 'flash' or 'pro' models
+            // Step 2: Look for 'gemini-1.5-flash' first (has the best free tier rate limits)
             const models = data.models || [];
-            const flashModel = models.find(m => m.name.includes('flash') && m.supportedGenerationMethods.includes('generateContent'));
+            const flashModel = models.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods.includes('generateContent')) 
+                            || models.find(m => m.name.includes('flash') && m.supportedGenerationMethods.includes('generateContent'));
             
             if (flashModel) {
                 const modelId = flashModel.name.split('/')[1];
@@ -1385,6 +1386,13 @@ function initApp() {
 // === INITIALIZATION & STABLE LISTENERS ===
 function initApp() {
     console.log("NutraTrack: Initializing App...");
+    
+    // Force downgrade away from strictly rate-limited experimental models for existing users
+    if (state.apiKeyModel === 'gemini-2.0-flash-exp') {
+        state.apiKeyModel = 'gemini-1.5-flash';
+        localStorage.setItem('mt_api_model', 'gemini-1.5-flash');
+    }
+
     try {
         if (!state.profile) {
             document.getElementById('view-onboarding').classList.remove('hidden');
