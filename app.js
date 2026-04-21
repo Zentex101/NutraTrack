@@ -667,12 +667,12 @@ document.getElementById('man-save-btn').addEventListener('click', () => {
     });
     saveState();
     
-    // Clear form
-    document.getElementById('man-cal').value = '';
-    document.getElementById('man-pro').value = '';
-    document.getElementById('man-car').value = '';
-    document.getElementById('man-fat').value = '';
-    document.getElementById('man-name').value = '';
+    // Removed form clearing so information stays for each update
+    // document.getElementById('man-cal').value = '';
+    // document.getElementById('man-pro').value = '';
+    // document.getElementById('man-car').value = '';
+    // document.getElementById('man-fat').value = '';
+    // document.getElementById('man-name').value = '';
     document.querySelector('.nav-item[data-target="view-dashboard"]').click();
 });
 
@@ -895,22 +895,49 @@ function renderRecipes() {
     document.getElementById('recipe-list').innerHTML = html;
 }
 
+// --- Modal Logic for Logging ---
+let pendingLogMealData = null;
+
+function openLogModal(title, mealData) {
+    pendingLogMealData = mealData;
+    document.getElementById('log-modal-title').innerText = `Log ${title}`;
+    document.getElementById('log-type-modal').classList.remove('hidden');
+}
+
+document.getElementById('close-log-modal')?.addEventListener('click', () => {
+    document.getElementById('log-type-modal').classList.add('hidden');
+    pendingLogMealData = null;
+});
+
+document.getElementById('log-modal-confirm')?.addEventListener('click', () => {
+    if (!pendingLogMealData) return;
+    const type = document.getElementById('log-modal-type').value;
+    pendingLogMealData.type = type;
+    
+    state.meals.push(pendingLogMealData);
+    saveState();
+    
+    document.getElementById('log-type-modal').classList.add('hidden');
+    alert(`Logged ${pendingLogMealData.name}!`);
+    pendingLogMealData = null;
+    document.querySelector('.nav-item[data-target="view-dashboard"]').click();
+});
+
 window.logRecipe = function(id) {
     const recipe = state.recipes.find(r => r.id === id);
     if (!recipe) return;
     
-    state.meals.push({
+    const mealData = {
         id: Date.now().toString(),
         name: recipe.name,
         calories: recipe.calories,
         protein: recipe.protein,
         carbs: recipe.carbs,
         fat: recipe.fat,
-        timestamp: new Date().getTime()
-    });
+        timestamp: getDisplayDate().getTime()
+    };
     
-    saveState();
-    alert(`Logged ${recipe.name}!`);
+    openLogModal(recipe.name, mealData);
 };
 
 // === DELETION METHODS ===
@@ -1196,16 +1223,12 @@ function renderRecentMeals() {
             <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">${meal.calories} kcal</div>
         `;
         item.onclick = () => {
-            if (confirm(`Log "${meal.name}" for ${document.getElementById('current-date').innerText}?`)) {
-                state.meals.push({
-                    ...meal,
-                    id: Date.now().toString(),
-                    timestamp: getDisplayDate().getTime(),
-                    type: 'other'
-                });
-                saveState();
-                alert(`Logged ${meal.name}!`);
-            }
+            const mealData = {
+                ...meal,
+                id: Date.now().toString(),
+                timestamp: getDisplayDate().getTime()
+            };
+            openLogModal(meal.name, mealData);
         };
         list.appendChild(item);
     });

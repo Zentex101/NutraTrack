@@ -457,6 +457,24 @@
         <img id="photo-modal-img" src="" alt="Progress Picture">
     </div>
 
+    <!-- LOGGING MODAL -->
+    <div id="log-type-modal" class="photo-modal hidden" style="z-index: 100;">
+        <div class="card form-card" style="width: 80%; max-width: 400px; margin: 50% auto; position: relative;">
+            <span id="close-log-modal" style="position:absolute; top:12px; right:16px; font-size:20px; font-weight:bold; color:white; cursor:pointer;"><i class="fa-solid fa-xmark"></i></span>
+            <h3 id="log-modal-title">Log Meal</h3>
+            <div class="input-full" style="padding:0; background:transparent; border:none; margin-bottom: 24px; margin-top: 16px;">
+                <label>Meal Type</label>
+                <select id="log-modal-type" class="input-full" style="color:white; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); margin-top:8px;">
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                </select>
+            </div>
+            <button id="log-modal-confirm" class="btn btn-primary full-width glow">Confirm Log</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
